@@ -1,0 +1,35 @@
+#Stage 1: The builder
+
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim as builder
+WORKDIR /app
+
+# copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# copy specific code files
+
+COPY services/user-service/ services/user-service/
+
+# Install dependencies for the user service
+RUN uv sync --package user-service --frozen --no-dev
+
+
+# Copy rest of the code
+
+COPY . .
+
+
+
+
+#Stage 2: The final Image
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+
+# copy the env and code from the builder
+COPY --from=builder /app /app
+
+# put the virtual env on the path.
+ENV PATH="/app/.venv/bin:$PATH"
+
+# run the FASTAPI server
+CMD ["fastapi" ,"run","services/user-service/main.py","--port","8001","--host","0.0.0.0"]

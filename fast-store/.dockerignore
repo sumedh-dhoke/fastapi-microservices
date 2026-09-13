@@ -1,0 +1,41 @@
+# Git and editor files
+.git
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+
+# Python virtual environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment files
+.env
+.env.*
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg-info
+
+# OS and temp files
+*.log
+tmp/
+temp/
+
+# Node / frontend artifacts (if added later)
+node_modules/
+
+# Docker-related local files
+docker-compose.override.yml

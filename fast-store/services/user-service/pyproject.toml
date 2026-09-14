@@ -11,7 +11,9 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "grpcio>=1.83.1",
     "grpcio-tools>=1.83.1",
+    "passlib[bcrypt]>=1.7.4",
     "psycopg[binary]>=3.3.5",
+    "pyjwt>=2.14.0",
     "sqlmodel>=0.0.42",
 ]
 

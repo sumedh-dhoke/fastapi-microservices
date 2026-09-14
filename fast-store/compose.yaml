@@ -20,7 +20,7 @@ services:
     labels: # Traefik labels for routing and service configuration
       - "traefik.enable=true" # Enable Traefik for this service .This allows Traefik to route traffic to the user-service container.
       - "traefik.http.routers.user-service.entrypoints=web" # Specify the entry point for the user-service router
-      - "traefik.http.routers.user-service.rule=PathPrefix(`/users`)" # Define the routing rule for the user-service
+      - "traefik.http.routers.user-service.rule=PathPrefix(`/users`) || PathPrefix(`/docs`) || PathPrefix(`/openapi.json`)" # Define the routing rule for the user-service
       - "traefik.http.services.user-service.loadbalancer.server.port=8001" # Specify the internal port of the user-service container
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:password@db:5432/user_db

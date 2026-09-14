@@ -1,14 +1,32 @@
 services:
+  traefik:
+    image: traefik:v3.7.13
+    command:
+      - "--api.insecure=true" # Enable the Traefik dashboard
+      - "--providers.docker=true" # Enable Docker provider
+      - "--providers.docker.exposedbydefault=false" # Only expose containers with explicit labels 
+      - "--entrypoints.web.address=:80" # Define the entry point for HTTP traffic
+    ports:
+      - "8081:80" # Internet traffic on port 8081 which is internally routed to Traefik's entry point on port 80 
+      - "8080:8080" # Traefik dashboard on port 8080
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+
   user-service:
     build:
       context: .
       dockerfile: services/user-service/dockerfile
-    ports:
-      - "8001:8001"
+    labels: # Traefik labels for routing and service configuration
+      - "traefik.enable=true" # Enable Traefik for this service .This allows Traefik to route traffic to the user-service container.
+      - "traefik.http.routers.user-service.entrypoints=web" # Specify the entry point for the user-service router
+      - "traefik.http.routers.user-service.rule=PathPrefix(`/users`)" # Define the routing rule for the user-service
+      - "traefik.http.services.user-service.loadbalancer.server.port=8001" # Specify the internal port of the user-service container
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:password@db:5432/user_db
     depends_on:
       - db
+      - product-service
 
   db:
     image: postgres:16-alpine

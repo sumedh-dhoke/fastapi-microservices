@@ -6,6 +6,7 @@ from models import User
 import grpc
 import product_pb2
 import product_pb2_grpc
+from fastapi.middleware.cors import CORSMiddleware   
 
 
 
@@ -21,6 +22,16 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/health")
 def health_check():
     return {"status":"ok","service":"user-service"}
+
+# CORS middleware configuration for allowing requests from any origin
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
+
 
 # apis of user-service
 @app.post("/users/")

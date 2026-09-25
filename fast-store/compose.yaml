@@ -1,18 +1,34 @@
 services:
+  # Message Broker Service: RabbitMQ
+  rabbitmq: 
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672" # RabbitMQ messaging port
+      - "15672:15672" # RabbitMQ management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: pass123
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5  
+
+  # API Gateway and Reverse Proxy: Traefik    
   traefik:
     image: traefik:v3.7.13
     command:
-      - "--api.insecure=true" # Enable the Traefik dashboard
+      - "--api.insecure=true" # Enable the Traefik dashboard. Should be false in production for security reasons.
       - "--providers.docker=true" # Enable Docker provider
       - "--providers.docker.exposedbydefault=false" # Only expose containers with explicit labels 
       - "--entrypoints.web.address=:80" # Define the entry point for HTTP traffic
     ports:
-      - "8081:80" # Internet traffic on port 8081 which is internally routed to Traefik's entry point on port 80 
+      - "8081:80" # Internet traffic on port 8081 which is internally routed to Traefik's entry point on port 80 . Also swagger docs on this port
       - "8080:8080" # Traefik dashboard on port 8080
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
-
+  # User Service: Handles user-related operations
   user-service:
     build:
       context: .
@@ -27,7 +43,8 @@ services:
     depends_on:
       - db
       - product-service
-
+      
+  #DB Service: PostgreSQL database for user-service
   db:
     image: postgres:16-alpine
     environment:
@@ -38,12 +55,26 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data   
+
+  # Product Service: Handles product-related operations    
   product-service:
     build:
       context: .
       dockerfile: services/product-service/dockerfile
+
+  # Order Service: Handles order-related operations    
+  order-service:
+    build:
+      context: .
+      dockerfile: services/order-service/dockerfile
+    ports:
+      - "8002:8000" # Expose the order-service externally on port 8002. This is only for testing purposes. In production, you would typically route traffic through Traefik. 
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+          
     
 
-
+# Define a named volume for PostgreSQL data persistence
 volumes:
   postgres_data:

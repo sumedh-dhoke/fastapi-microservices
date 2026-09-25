@@ -1,5 +1,7 @@
 from fastapi import FastAPI,Depends,HTTPException
 from contextlib import asynccontextmanager
+
+from fastapi.security import OAuth2PasswordRequestForm
 from db import engine,get_session
 from sqlmodel import SQLModel,Session,select
 from models import User, UserPublic
@@ -80,9 +82,10 @@ def get_user_purchase(user_id:int, product_id:int, token_data: dict = Depends(ve
 
 
 @app.post("/login")
-def login(user_data:User,db:Session=Depends(get_session)):
-    db_user = db.exec(select(User).where(User.email==user_data.email)).first()
-    if not db_user or not verify_password(user_data.password, db_user.password):
+def login(form_data: OAuth2PasswordRequestForm = Depends(),db:Session=Depends(get_session)):
+    
+    db_user = db.exec(select(User).where(User.email==form_data.username)).first()
+    if not db_user or not verify_password(form_data.password, db_user.password):
         raise HTTPException(status_code=404,detail="Incorrect email or password")
     jwt_access_token = create_access_token(data={"sub":str(db_user.id),"email":db_user.email})
     return {"access_token":jwt_access_token,"token_type":"bearer"}

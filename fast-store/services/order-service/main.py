@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import json
 from contextlib import asynccontextmanager
 import aio_pika
@@ -13,19 +13,26 @@ rabbitmq_channel = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan handler: open RabbitMQ connection and channel, declare queue."""
-    global rabbitmq_connection, rabbitmq_channel
+    global rabbitmq_connection
 
-    # Establish connection to RabbitMQ
-    rabbitmq_connection = await aio_pika.connect_robust("amqp://admin:pass123@rabbitmq:5672/")
-    
-    # Create a channel and declare a queue named "order_events"
-    async with rabbitmq_connection.channel() as rabbitmq_channel:
-      await rabbitmq_channel.declare_queue("order_events", durable=True)  # create Queue named order_events
-    
+    for i in range(5):  # Retry up to 5 times
+        try:
+            # Establish connection to RabbitMQ
+
+            rabbitmq_connection = await aio_pika.connect_robust("amqp://admin:pass123@rabbitmq:5672/")
+            break  # Exit the loop if connection is successful
+        except Exception as e:
+            print(f" ❌ Attempt {i + 1}/5: Failed to connect to RabbitMQ. Retrying in {2**i} seconds...")
+            await asyncio.sleep(2 ** i)  # Exponential backoff  
+
+    else:
+        print(" ❌ Failed to connect to RabbitMQ after 5 attempts. Exiting.")
+        raise ConnectionError("Failed to connect to RabbitMQ after 5 attempts.")
+    print(" ✅ Connected to RabbitMQ successfully.")
     yield  # This is where the application runs
 
     # Cleanup: Close the channel and connection
-    await rabbitmq_channel.close()
+    
     await rabbitmq_connection.close()
 
 
@@ -33,7 +40,9 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post("/orders/")
 async def place_order(product_id: int, user_id: int):
-    global rabbitmq_channel
+    # ensure we have a connection before publishing
+    if rabbitmq_connection is None:
+        raise HTTPException(status_code=503, detail="RabbitMQ not available")
 
     # 1. Create a order event payload
     order_event = {
@@ -48,7 +57,7 @@ async def place_order(product_id: int, user_id: int):
     # 3. Publish the order event to RabbitMQ asynchronously.
     async with rabbitmq_connection.channel() as channel:
         message = aio_pika.Message(body=json.dumps(order_event).encode())
-        await channel.default_exchange.publish(message, routing_key="order_events") # create Queue named order_events
+        await channel.default_exchange.publish(message, routing_key="order_events1") # publish to existing Queue named order_events. Note let connsuming service create queue and dlq
 
 
     # 3. Return a response to the client   

@@ -1,5 +1,5 @@
 [project]
-name = "fast-store"
+name = "inventory-service"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -8,21 +8,13 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.141.1",
-    "pyjwt>=2.14.0",
+    "aio-pika>=10.0.1",
+    "fastapi[standard]>=0.141.1",
 ]
 
 [project.scripts]
-fast-store = "fast_store:main"
+inventory-service = "inventory_service:main"
 
 [build-system]
 requires = ["uv_build>=0.12.13,<0.13.0"]
 build-backend = "uv_build"
-
-[tool.uv.workspace]
-members = [
-    "services/user-service",
-    "services/product-service",
-    "services/order-service",
-    "services/inventory-service",
-]

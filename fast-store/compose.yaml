@@ -8,6 +8,9 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: pass123
+      RABBITMQ_ERLANG_COOKIE: 'R4bb1tC00k13ChangeMe!'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 10s
@@ -43,7 +46,7 @@ services:
     depends_on:
       - db
       - product-service
-      
+
   #DB Service: PostgreSQL database for user-service
   db:
     image: postgres:16-alpine
@@ -72,9 +75,25 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      
+  
+            
           
-    
+  
+  # Inventory Service: Handles inventory-related operations    
+  inventory-service:
+    build:
+      context: .
+      dockerfile: services/inventory-service/dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1  # Ensure that Python output is sent straight to the terminal (e.g., for logging purposes)
+    ports:
+      - "8003:8000" # Expose the inventory-service externally on port 8003. This is only for testing purposes. In production, you would typically route traffic through Traefik. 
+    depends_on:
+      rabbitmq:
+        condition: service_healthy  
 
 # Define a named volume for PostgreSQL data persistence
 volumes:
   postgres_data:
+  rabbitmq_data:

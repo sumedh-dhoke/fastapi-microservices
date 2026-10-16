@@ -1,6 +1,5 @@
 from fastapi import FastAPI,Depends,HTTPException
 from contextlib import asynccontextmanager
-
 from fastapi.security import OAuth2PasswordRequestForm
 from db import engine,get_session
 from sqlmodel import SQLModel,Session,select
@@ -11,6 +10,12 @@ import product_pb2_grpc
 from fastapi.middleware.cors import CORSMiddleware   
 from auth import hash_password,verify_password,create_access_token
 from shared_utils.jwt_utils import verify_token
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 
 
@@ -22,6 +27,26 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+# 1. Set up OpenTelemetry tracing.Name the service for traceing purposes. This name will appear in the Jaeger UI and other tracing backends.
+
+resource= Resource.create({"service.name":"user-service"})
+provider = TracerProvider(resource=resource)
+
+
+# 2. Tell it where to send the traces. In this case, we are sending them to the Jaeger instance running on the Docker network at port 4317.
+# Jaeger all-in-one exposes OTLP over gRPC on 4317 when COLLECTOR_OTLP_ENABLED=true.
+processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="jaeger:4317", insecure=True))
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+
+# 3. Auto- Instrument FastAPI to automatically create spans for incoming HTTP requests.
+# This will allow you to see traces for each request made to the FastAPI application in the Jaeger UI.
+
+FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
+
+
 
 # Health check endpoint
 @app.get("/health")

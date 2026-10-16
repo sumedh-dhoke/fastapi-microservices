@@ -1,8 +1,8 @@
-from fastapi import FastAPI,Depends,HTTPException
+from fastapi import FastAPI,Depends,HTTPException,Response,status
 from contextlib import asynccontextmanager
 from fastapi.security import OAuth2PasswordRequestForm
 from db import engine,get_session
-from sqlmodel import SQLModel,Session,select
+from sqlmodel import SQLModel,Session,select,text
 from models import User, UserPublic
 import grpc
 import product_pb2
@@ -114,3 +114,19 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),db:Session=Depends(ge
         raise HTTPException(status_code=404,detail="Incorrect email or password")
     jwt_access_token = create_access_token(data={"sub":str(db_user.id),"email":db_user.email})
     return {"access_token":jwt_access_token,"token_type":"bearer"}
+
+
+@app.get("/health/liveness",tags=["Health"]) # livesness probe checks if the service is alive and running. It can be used by Kubernetes or other orchestrators to determine if the service is still running and responsive.
+def liveness_probe():
+    return {"status": "alive"}  
+
+@app.get("/health/readiness",tags=["Health"]) # readiness probe checks if the service is ready to handle requests. It can be used by Kubernetes or other orchestrators to determine if the service is ready to receive traffic.
+def readiness_probe(response: Response, session: Session = Depends(get_session)):
+    # Here you can add checks to see if the service is ready to handle requests, e.g., check database connection, external services, etc.
+    # For simplicity, we will just return a static response.
+    try:
+        session.exec(text("SELECT 1"))  # Simple query to check DB connection
+        return {"status": "ready"}
+    except Exception as e:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unavailable","detail" : str(e)}
